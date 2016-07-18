@@ -20,7 +20,7 @@ function SST.loadResults()
 		local line = io.read()
 		if line == nil then break end
 		line = line:split("|")
-		results[i] = tonumber(line[2])
+		results[i-1] = tonumber(line[2])
 		i = i+1
 	end
 	io.close(file)

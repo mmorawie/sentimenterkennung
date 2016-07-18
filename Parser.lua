@@ -1,24 +1,41 @@
-require 'ffi'
 
 
 local Parser = {}
 
-jvm = ffi.load('jvm.dll');
-p1 = ffi.load('parser.dll')
+local ffi = require 'ffi'
+local started = false
 
-function Parser.parse(str)
-	--cmd = "java -cp \"../stanford-parser-full-2015-12-09/*;./java\" Parser \"" .. str .. "\" >result.txt "
-	line = p1.parse(str)
-	os.execute(cmd)
-	local file = io.open("result.txt","r")
-	io.input(file)
-	line = io.read()
-	line = io.read()
-	return line
-	--print(line)
+ffi.cdef[[
+char* parse(char* buf);
+int test();
+int startJVM();
+]]
+
+local jvm = ffi.load('jvm.dll');
+local parser = ffi.load('parser.dll')
+
+function Parser.start()
+	ret = parser.startJVM()
+	if ret == 0 then 
+		started = true
+	else 
+		started = false
+	end
+	return ret
 end
 
-
-
+function Parser.parse(str)
+	strl = string.len(str)
+	local buf = ffi.new("char[?]", #str)
+	ffi.copy(buf, str)
+	if started == false then
+		Parser.start()
+	end
+	if started == false then
+		return "err"
+	end
+	zz = parser.parse(buf)
+	return ffi.string(zz)
+end
 
 return Parser
