@@ -5,6 +5,8 @@ require 'nngraph'
 local GRU = {}
 
 function GRU.create(input_size, output_size)
+
+
 	local input = nn.Identity()()
 	local prev_h = nn.Identity()()
 	--	local prev_h1 = nn.Identity()()
