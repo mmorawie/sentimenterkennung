@@ -1,340 +1,173 @@
 require 'torch'
 require 'nn'
 require 'nngraph'
-require 'Serv'
-require 'Analyzer2'
-GRU = require 'GRU2'
+require 'optim'
+require 'xlua' 
+require 'sys' 
+require 'lfs' 
+require 'penlight'
 Double = require 'Double'
-GRU1 = require 'GRU1'
+Node = require 'Node'
+
 
 local Analyzer = {}
 
-function load(number)
-	SST 		= require 'SST'
-	Glove		= require 'Glove'
+function share_params(cell, src)
+  if torch.type(cell) == 'nn.gModule' then
+    for i = 1, #cell.forwardnodes do
+      local node = cell.forwardnodes[i]
+      if node.data.module then
+        node.data.module:share(src.forwardnodes[i].data.module, 'weight', 'bias', 'gradWeight', 'gradBias')
+      end
+    end
+  elseif torch.isTypeOf(cell, 'nn.Module') then
+    cell:share(src, 'weight', 'bias', 'gradWeight', 'gradBias')
+  else
+    error('parameters cannot be shared for this input')
+  end
+end
+
+function loadsets()
 	set 		= SST.loadSplit()
 	results 	= SST.loadResults()
 	sentences 	= SST.loadSentences()
 	phrases 	= SST.loadPhrases()
 	trees 		= SST.loadTrees()
-	
+	testset = {}; a = 1;
+	trainset = {}; b = 1;
+	devset = {}; c = 1;
+	for i = 1, #sentences do
+		if set[i] == "1" then trainset[a] = i; a = a + 1 end
+		if set[i] == "2" then testset[b] = i; b = b + 1 end
+		if set[i] == "3" then devset[c] = i; c = c + 1 end
+	end
+end
+
+function load(number)
+	SST 		= require 'SST'
+	Glove		= require 'Glove'
 	if number == 0 then
 		dictionary = Glove.loadDictionary('./glove.6B/glove.6B.50d.txt',true)
 	else
 		dictionary = Glove.loadDictionary('./glove.6B/glove.6B.50d.txt',true, number)
 	end
+	loadsets()
+	vectorSize = #(dictionary["do"]) -- vector size
+end
+
+function zload()
+	SST 		= require 'SST'
+	Glove		= require 'Glove'
+	loadsets()
+	dictionary = {}
+	for i = 1, #sentences do
+		local wrd = sentences[i]:split('|')
+		for j = 1, #wrd do dictionary[ wrd[j] ] = -1 end
+	end
+	dictionary = Glove.lookup('./glove.6B/glove.6B.50d.txt')
 	vectorSize = #(dictionary["do"]) -- vector size
 end
 
 function dload()
 	SST 		= require 'SST'
 	Glove		= require 'Glove'
-	Glove.dset(300)
-	set 		= SST.loadSplit()
-	results 	= SST.loadResults()
-	sentences 	= SST.loadSentences()
-	phrases 	= SST.loadPhrases()
-	trees 		= SST.loadTrees()
-
+	--Glove.dset(300)
+	vectorSize = 300
 	dictionary = {}
+	loadsets()
 	vectorSize = 300
 end
 
-function getcorrectvalues(words, tree)
-	local correct = {}
-	local priority = {}
-	for j = 1,#words do priority[j] = j end
-	for j = 1,#tree do
-		if priority[j] == nil then priority[j] = j end --print("\t\t",words[j], priority[j])
-		if results[phrases[words[j]]] == nil then results[phrases[words[j]]] = 0 end
-		correct[j] = u({results[phrases[words[j]]],results[phrases[words[j]]]})
-		if words[tree[j]] == nil then
-			words[tree[j]] = words[j]
-			priority[tree[j]] = priority[j]
-		else
-			if priority[tree[j]] < priority[j] then
-				words[tree[j]] = words[tree[j]] .. " " .. words[j]
-			else
-				words[tree[j]] = words[j] .." " .. words[tree[j]]; priority[tree[j]] = priority[j]
-			end
-		end
-	end
-	return correct
-end
-
-
-function train(words, tree, netwrk, uc)
-	local output = {}
-	local input = {}
-	local min = {}
-	local correct = getcorrectvalues(words, tree)
-	local layer = {}
-	for j = 1,#words do input[j]= {t(words[j]), u({0,0})} end
-	for j = #words + 1,#tree do input[j]= {t("[-]"), u({0,0})} end
-	for j = 1,#words do min[j] = j end
-	for j = #words + 1, #tree do min[j] = 1000000 end
-	min[0] = 1000000
-	input[0]= {"", u({0,0})}
-	criterion = nn.MSECriterion()
-	-- fwd
-	tot = 0;
-	for j = 1,#tree do
-		--print("-- " .. j .. " " .. min[j], input[tree[j]][2])
-		layer[j] = netwrk:clone('weight', 'bias')
-		layer[j]:forward(input[j])
-		a = criterion:forward(layer[j].output[1], correct[j])
-		tot = tot + a;
-		if min[j] < min[tree[j]] then
-			min[tree[j]] = min[j]
-			input[tree[j]][2][1][2] = input[tree[j]][2][1][1]
-			input[tree[j]][2][1][1] = layer[j].output[1][1]
-		else
-			input[tree[j]][2][1][1] = layer[j].output[1][1]
-		end
-		layer[j]:zeroGradParameters()
-	end
-	print(tot/#tree,", ")
-	-- bwd
-	newntwk = layer[#tree]:clone('weight','bias')
-	for j = #tree,1,-1 do
-		b = criterion:backward( layer[j].output[1], correct[j] )
-		layer[j]:backward(input[j], b)
-		layer[j]:updateParameters(uc)
-		--newntwk:backward(input[j], b)
-		--newntwk:zeroGradParameters()
-		newntwk:updateParameters(uc)
-	end
-	newntwk = layer[#tree]:clone('weight','bias')
-	return newntwk
-end
-
-
-function train2(words, tree, netwrk, uc)
-	local output = {}
-	local input = {}
-	local min = {}
-	local correct = getcorrectvalues(words, tree)
-	local layer = {}
-	for j = 1,#words do input[j]= {t(words[j]), u({0,0})} end
-	for j = #words + 1,#tree do input[j]= {t("[-]"), u({0,0})} end
-	for j = 1,#words do min[j] = j end
-	for j = #words + 1, #tree do min[j] = 1000000 end
-	min[0] = 1000000
-	input[0]= {"", u({0,0})}
-	criterion = nn.MSECriterion()
-	tot = 0;
-	for j = 1,#tree do
-		--print("-- " .. j .. " " .. min[j], input[tree[j]][2])
-		newntwk = netwrk:clone('weight', 'bias')
-		newntwk:forward(input[j])
-		a = criterion:forward(newntwk.output[1], correct[j])
-		tot = tot + a;
-		if min[j] < min[tree[j]] then
-			min[tree[j]] = min[j]
-			input[tree[j]][2][1][2] = input[tree[j]][2][1][1]
-			input[tree[j]][2][1][1] = newntwk.output[1][1]
-		else
-			input[tree[j]][2][1][1] = newntwk.output[1][1]
-		end
-		newntwk:zeroGradParameters()
-		b = criterion:backward( newntwk.output, correct[j] )
-		newntwk:backward(input[j], b)
-		newntwk:updateParameters(uc)
-	end
-	print(" -- >", tot/#tree)
-	return newntwk
-end
-
-
-function test(words, tree, netwrk)
-	local output = {}
-	local input = {}
-	local min = {}
-	nwords = #words;
-	local correct = getcorrectvalues(words, tree)
-	local layer = {}
-	for j = 1,nwords do input[j]= {t(words[j]), u({0,0})} end
-	for j = nwords + 1,#tree do input[j]= {t("[-]"), u({0,0})} end
-	for j = 1,nwords do input[j]= {t(words[j]), u({0,0})} end
-	for j = nwords + 1,#tree do input[j]= {t("[-]"), u({0,0})} end
-	for j = 1,nwords do min[j] = j end
-	for j = nwords + 1, #tree do min[j] = 1000000 end
-	min[0] = 1000000
-	input[0]= {"", u({0,0})}
-	local diff = 0
-	for j = 1,#tree do
-		netwrk:forward(input[j])
-		diff = correct[j][1][1] -netwrk.output[1][1]
-		--if math.abs(correct[j][1][1] - netwrk.output[1][1])<0.33 then totalcorrect = totalcorrect + 1 end
-		if bucket(correct[j][1][1]) == bucket(netwrk.output[1][1]) then totalcorrect = totalcorrect + 1 end
-		totalerror = totalerror + math.abs(diff);
-		total = total + 1;
-		--print("\t\t", (correct[j][1][1] - netwrk.output[1][1] ) )
-		--input[tree[j]][2] = torch.add( input[tree[j]][2] , netwrk.output[1] )
-		if min[j] < min[tree[j]] then
-			min[tree[j]] = min[j]
-			input[tree[j]][2][1][2] = input[tree[j]][2][1][1]
-			input[tree[j]][2][1][1] = newntwk.output[1][1]
-		else
-			input[tree[j]][2][1][1] = newntwk.output[1][1]
-		end
-	end
-	if bucket(correct[#tree][1][1]) == bucket(netwrk.output[1][1]) then sentcorrect = sentcorrect + 1 end
-	senttotal = senttotal + 1
-	sentme = sentme + math.abs(diff)
-end
-
-function run(words, tree, netwrk)
-	local output = {}
-	local input = {}
-	for j = 1,#words do input[j]= {t(words[j]), u({0,0})} end
-	for j = #words + 1,#tree do input[j]= {t("[-]"), u({0,0})} end
-	input[0]= {"", u({0,0})}
-	out = 0.5
-	for j = 1,#tree do
-		netwrk:forward(input[j])
-		out = netwrk.output[1][1]
-		input[tree[j]][2] = torch.add( input[tree[j]][2] , netwrk.output[1] )
-	end
-	return out
-end
-
-function sent2(str)
-	par = require 'Parser'
-	res = par.parse(str)
-	print(res)
-	wor = res:split("@@")[2]:split("|")
-	print(wor)
-	--network1 = trainNtwrk(10,"ntwk3", 0.001)
-	network1 = torch.load("./networks/ntwk2")
-	tre = map(tonumber, res:split("@@")[1]:split("|") );
-	--print(run(wor,tre, network1) );
-	return run(wor,tre, network1)
-end
-
-
-
-function trainNtwrk(n, name, uc)
-	network =  GRU.create(vectorSize, 2)
-	for i = 1, n do
-		local words = sentences[i]:split("|")
-		local tree = trees[i]
-		if set[i] == "1" then
-			network = train(words, tree, network, uc)
-		end
-	end
-	torch.save("./networks/" .. name, network)
-	return network
-end
-
-function testNtwrk(n , net)
-	totalcorrect = 0;
-	totalerror = 0;
-	total = 0;
-	sentcorrect = 0;
-	senttotal = 0;
-	sentme = 0;
-	for i = 1, n do
-		local words = sentences[i]:split("|")
-		local tree = trees[i]
-		if set[i] == "2" then
-			test(words,tree, net)
-		end
-	end
-	print(" fraction correct  : \t", totalcorrect/total)
-	print(" mean error        : \t", totalerror/total)
-	print(" sentences correct : \t", sentcorrect/senttotal)
-	print(" sentences mean err: \t", sentme/senttotal)
-end
-
---load()
---testNtwrk(4000, trainNtwrk(900,"ntwk3", 0.002) )
-
-function trainNtwrk2(n, name, uc, hi1, hi2, hi3)
-	network = Double.create(vectorSize, 1, hi1, hi2, hi2, hi3, hi3)
-	for i = 1, n do
-		local words = sentences[i]:split("|")
-		local tree = trees[i]
-		if set[i] == "1" then
-			network = trainII(words, tree, network, network, uc, uc)
-		end
-	end
-	torch.save("./networks/" .. name, network)
-	return network
-end
-
-
-function testNtwrk2(n, net)
-	totalcorrect = 0; total = 0;
-	for i = 1, n do
-		local words = sentences[i]:split("|")
-		local tree = trees[i]
-		if set[i] == "2" then testII(words, tree, net, net) end
-	end
-	
-end
-
-
-function trainNtwrk3(n, name, uc1, uc2)
-	network1 = Double.create(vectorSize, 1, 50, 40, 40, 30, 30)
-	network2 = GRU1.create(2, 2)
-	for i = 1, n do
-		local words = sentences[i]:split("|")
-		local tree = trees[i]
-		if set[i] == "1" then
-			networks = trainII(words, tree, network1, network2, 0.15, uc2)
-			network1 = networks[1]
-			network2 = networks[2]
-		end
-	end
-	return {network1, network2, network3}
-end
-
-function testNtwrk3(network1 , network2)
-	statistics = require 'Stat'
-	statistics:zero()
-	for i = 1, 7000 do
-		local words = sentences[i]:split("|"); local tree = trees[i]
-		if set[i] == "2" then
-			networks = testII(words, tree, network1, network2)
-		end
-	end
-	statistics:printout()
-end
-
-function sent(str, name1, name2)
+function sent(str, name)
 	local par = require 'Parser'
 	local res = par.parse(str)
 	local wor = res:split("@@")[2]:split("|")
 	local tre = map(tonumber, res:split("@@")[1]:split("|") );
-	local network1 = torch.load("./networks/" .. name1)
-	local network2 = torch.load("./networks/" .. name2)
-	--print(res:split("@@")[1], res:split("@@")[2]);
-	return execute(wor,tre, network1, network2, true)
+	local no = Node.setup(wor, tre)
+	local network = torch.load("./networks/" .. name)
+	network:forward(no[#no])
+	no[#no]:printout()
 end
 
+function score(set, mod)
+	local no
+	local sc = 0
+	local ok = 0
+	local loss = 0
+	for i = 1, #set do
+		mod.bTree:evaluate()
+		no = Node.setup(sentences[set[i]]:split('|'), trees[set[i]])
+		_, loss = mod.bTree:forward(no[#no])
+		--print(loss)
+		if ( tablebucket( no[#no].output ) ==  bucket( no[#no].correct ) ) then ok = ok + 1 end
+		sc = sc + loss
+		mod.bTree:clean(no[#no])
+	end
+	return ok, sc
+end
 
-load(1000000)
---testNtwrk(4000, trainNtwrk(900,"ntwk3", 0.002) ) 
---dload()
---nwk = trainNtwrk2(11000,"ntwkII", 0.15, 50, 40, 30); testNtwrk2(11000, nwk)
---print(" fraction correct  : \t", totalcorrect/total)
+include('Trainer.lua')
+include('bTree.lua')
+include('BinTree.lua')
+GRU4 = require 'GRU4'
+LSTM = require 'LSTM'
+statistics = require 'Stat'
 
---nwks = trainNtwrk3(2000, "ntwkIIbis", 0.15, 0.04)
---testNtwrk3(nwks[1], nwks[2])
---torch.save("networks/main2",nwks[2])
+classnumber = 5
+require 'Serv'
 
+dload()
+zload(1000000)
+
+local model = Trainer({}, 0.05)
+local best = -1.0
+local finalmodel = model
+for i = 1, 5 do --epochs
+	model.bTree:training()
+	model:train(#trainset)
+	local ok1, score1 = score(trainset, model)
+  	local ok2, score2 = score(devset, model)
+  	print('{', (1.0*score2)/#devset , ',', (1.0*score1)/#trainset, ',', (1.0*ok2)/#devset ,',',  (1.0*ok1)/#trainset , '},')
+  	if ok2 > best then
+		best = ok2
+		finalmodel = Trainer{}
+		finalmodel.params:copy(model.params)
+	end 
+end
+print('finished training')
+
+
+statistics:zero()
+for i = 1, #testset do
+	model.bTree:evaluate()
+	local no = Node.setup(sentences[testset[i]]:split('|'), trees[testset[i]])
+	finalmodel.bTree:forward(no[#no])
+	--print( no[#no].output, tablebucket(no[#no].output),  no[#no].correct )
+		statistics:sentences(no[#no].output, no[#no].correct)
+		for i = 1, no.wsize do statistics:words(no[i].output, no[i].correct) end
+		for i = no.wsize + 1, no.tsize - 1 do statistics:phrases(no[i].output, no[i].correct, no[i].size) end
+	finalmodel.bTree:clean(no[#no])
+end
+statistics:printout()
+
+torch.save('./networks/' .. 'module4', model.bTree) 
+
+
+--wordtrainer("main1b",0.05, true)
+--require 'Analyzer4'
+--trainer()
+
+--sent('Ala has a cat.', 'module1')
 --treetrainer(2000, "main2b", 0.04, true, true)
---wordtrainer("main1b",0.15, true)
+
+--wordtrainer("main1b",0.85, true)
 
 
-sent("Ala has a cat.", "main1", "main2")
-sent("Ala has a stupid cat.", "main1", "main2")
-sent("Ala has a very stupid cat.", "main1", "main2")
-sent("Ala has a completely stupid cat.", "main1", "main2")
-
-sent("It is difficult for the isolated individual to work himself out of the immaturity which has become almost natural for him.", "main1", "main2")
-sent("This i so boring.", "main1", "main2")
-
+--sent("Ala has a cat.", "main1", "main2")
+--sent("Ala has a stupid cat.", "main1", "main2")
+--sent("Ala has a very stupid cat.", "main1", "main2")
+--sent("Ala has a completely stupid cat.", "main1", "main2")
+--sent("It is difficult for the isolated individual to work himself out of the immaturity which has become almost natural for him.", "main1", "main2")
+--sent("This is so boring.", "main1", "main2")
 
 return Analyzer

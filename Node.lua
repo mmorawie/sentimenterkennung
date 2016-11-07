@@ -2,7 +2,7 @@
 
 Node = {
     children = {},
-    correct = -1,
+    --correct = -1,
     --left = 1000000,
     --result = 0.5,
     --size = 0,
@@ -19,10 +19,13 @@ Node = {
             self.children[position] = node
             self.size = self.size + node.size
         end,
+    printout = function(self)
+            printout(self, 1)
+        end,
     printout = function(self, z)
             zz = z or 1
             for i = 1, zz do io.write("|") end
-            io.write(self.name .. "   " .. self.output .. "  c=" .. self.correct .. "\n")
+            io.write(self.name .. "   " .. tablebucket( self.output ) + 1 .. "\n")
             for i = 1, #self.children do
                     self.children[i]:printout(zz+1)
             end
@@ -35,6 +38,7 @@ Node = {
             o.children = {}
             o.left = 1000000
             o.size = 0
+            o.correct = -1;
             return o
         end,
     newleaf = function(self, i, word)
@@ -46,32 +50,30 @@ Node = {
             o.size = 1
             o.children = {}
             o.input = t(word)
+            o.correct = -1;
             return o
+        end,
+    setup = function(words, tree)
+            local nodes = {}
+	        for j = #words + 1,#tree do 	
+                nodes[j] = Node:new("" .. j) 
+            end
+	        for j = 1,#words do 
+                nodes[j] = Node:newleaf(j, words[j])
+                nodes[tree[j]]:addchild(nodes[j])
+            end
+	        for j = #words+1,#tree-1 do 	nodes[tree[j]]:addchild(nodes[j]) end
+	        for j = #words+1, #tree do 		nodes[j].name = nodes[j].children[1].name .. " " .. nodes[j].children[2].name end
+            for j = 1, #tree do 		
+                nodes[j].output = -1	
+                nodes[j].correct = results[ phrases[ nodes[j].name ]  ]
+            end
+            nodes.wsize = #words
+            nodes.tsize = #tree
+            return nodes
         end
+    
 }
-
-
---[[
-function Node.empty(nwords, ntree)
-    Node.children = {}
-    Node.left = {}
-    Node.size = {}
-    for i = 1, nwords do 
-        Node.left[i] = i 
-        Node.size[i] = 1 
-    end
-    for i = nwords+1, ntree do 
-        Node.left[i] = 10000000 --infinity
-        Node.size[i] = 0
-    end
-end
-
-function Node.parent(child, parent)
-    Node.size[parent] = Node.size[parent] + Node.size[child]
-    Node.left[parent] = math.min(Node.left[parent], Node.left[child])
-    Node.children[i] = Node.left[i]
-end
-]]
 
 
 return Node

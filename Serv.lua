@@ -29,7 +29,8 @@ function v(word) -- vector representation
 	local vec = dictionary[word:lower()]
 	if word == nullwrd then return nullVector(vectorSize) end
 	if vec == nil then
-		vec = Glove.searchmore(word:lower())
+		--vec = Glove.searchmore(word:lower())
+        vec = nullVector(vectorSize)
 	end
 	return vec
 end
@@ -42,12 +43,27 @@ function u(list) -- tensor representation
 	return torch.Tensor({list})
 end
 
-function bucket(x)
-	if x<0.2 then return 0 end
-	if x<0.4 then return 1 end
-	if x<0.6 then return 2 end
-	if x<0.8 then return 3 end
-	return 4;
+if classnumber == 5 then
+    bucket = function (x)
+        if x<0.2 then return 0 end
+        if x<0.4 then return 1 end
+        if x<0.6 then return 2 end
+        if x<0.8 then return 3 end
+	    return 4;
+    end
+else
+    bucket = function (x)
+        if x<0.4 then return 0 end
+        if x<0.6 then return 1 end
+	    return 2;
+    end
+end
+
+function tablebucket(x)
+    x = x[1]
+    local max = 1;
+    for i = 1, classnumber do if x[i] > x[max] then max = i end end
+    return max - 1;
 end
 
 

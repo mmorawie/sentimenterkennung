@@ -4,44 +4,34 @@ require 'nngraph'
 
 local LSTM = {}
 
-function LSTM.create(input_size, rnn_size)
-	  local inputs = {}
-	  table.insert(inputs, nn.Identity()())
-	  table.insert(inputs, nn.Identity()())
-	  table.insert(inputs, nn.Identity()())
-	  local input = inputs[1]
-	  local prev_c = inputs[2]
-	  local prev_h = inputs[3]
+function LSTM.create(input_size, gate_o)
+	local lc, lh = nn.Identity()(), nn.Identity()()
+  	local rc, rh = nn.Identity()(), nn.Identity()()
+	local new_gate = function()
+		return nn.CAddTable(){
+		nn.Linear(input_size, input_size)(lh),
+		nn.Linear(input_size, input_size)(rh)
+	}
+  	end
 
-	  local i2h = nn.Linear(input_size, 4 * rnn_size)(input)
-	  local h2h = nn.Linear(rnn_size, 4 * rnn_size)(prev_h)
-	  local preactivations = nn.CAddTable()({i2h, h2h})
+	local i = nn.Sigmoid()(new_gate())
+	local lf = nn.Sigmoid()(new_gate())
+	local rf = nn.Sigmoid()(new_gate())
+	local update = nn.Tanh()(new_gate())
+	local c = nn.CAddTable(){
+    	nn.CMulTable(){i, update},
+      	nn.CMulTable(){lf, lc},
+      	nn.CMulTable(){rf, rc}
+    }
 
-	  local pre_sigmoid_chunk = nn.Narrow(2, 1, 3 * rnn_size)(preactivations)
-	  local all_gates = nn.Sigmoid()(pre_sigmoid_chunk)
-
-	  local in_chunk = nn.Narrow(2, 3 * rnn_size + 1, rnn_size)(preactivations)
-	  local in_transform = nn.Tanh()(in_chunk)
-
-	  local in_gate = nn.Narrow(2, 1, rnn_size)(all_gates)
-	  local forget_gate = nn.Narrow(2, rnn_size + 1, rnn_size)(all_gates)
-	  local out_gate = nn.Narrow(2, 2 * rnn_size + 1, rnn_size)(all_gates)
-
-	  local c_forget = nn.CMulTable()({forget_gate, prev_c})
-	  local c_input = nn.CMulTable()({in_gate, in_transform})
-	  local next_c = nn.CAddTable()({
-	    c_forget,
-	    c_input
-	  })
-
-	  local c_transform = nn.Tanh()(next_c)
-	  local next_h = nn.CMulTable()({out_gate, c_transform})
-
-	  outputs = {}
-	  table.insert(outputs, next_c)
-	  table.insert(outputs, next_h)
-
-	  return nn.gModule(inputs, outputs)
+	local h
+	if gate_o then
+		local o = nn.Sigmoid()(new_gate())
+		h = nn.CMulTable(){o, nn.Tanh()(c)}
+	else
+		h = nn.Tanh()(c)
+	end
+	return nn.gModule({lc, lh, rc, rh},{c, h})
 end
 
 return LSTM
