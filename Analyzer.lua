@@ -117,7 +117,7 @@ classnumber = 5
 require 'Serv'
 
 dload()
-zload(1000000)
+--zload(1000000)
 
 local model = Trainer({}, 0.05)
 local best = -1.0
