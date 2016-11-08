@@ -8,18 +8,16 @@ function Trainer:__init(config, lr)
   self.dropout           = (config.dropout == nil) and true or config.dropout
 
   self.dimension = vectorSize
-  --self.emb = nn.LookupTable(config.emb_vecs:size(1), self.dimension)
-  --self.emb.weight:copy(config.emb_vecs)
   self.in_zeros = torch.zeros(self.dimension)
   self.classes = classnumber
   self.mem_dim = 30
-  self.optim_state = { learningRate = 0.05 } --learning rate -- optimizer configuration 0.05
+  self.optim_state = { learningRate = 0.05 }
   
   self.bTree = BinTree{
     in_dim  = self.dimension,
-    mem_dim = 30, -- mem
+    mem_dim = 30,
     output_module_fn = function() return self:new_sentiment_module() end,
-    criterion = nn.ClassNLLCriterion(), -- criterion
+    criterion = nn.ClassNLLCriterion(),
   }
   self.params, self.grad_params = self.bTree:getParameters()
 end
@@ -59,7 +57,7 @@ function Trainer:train(n)
       loss = loss / batch_size
       self.grad_params:div(batch_size)
 
-      -- regularization
+      
       loss = loss + 0.5 * self.reg * self.params:norm() ^ 2
       self.grad_params:add(self.reg, self.params)
     --print("> ", i, loss)

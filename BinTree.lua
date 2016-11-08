@@ -12,21 +12,15 @@ function BinTree:__init(config)
   --parent.__init(self, config)
   self.gate_output = config.gate_output
   if self.gate_output == nil then self.gate_output = true end
-
-  -- a function that instantiates an output module that takes the hidden state h as input
   self.output_module_fn = config.output_module_fn
   self.criterion = config.criterion
-  -- leaf input module
+  
   self.leaf_module = self:new_leaf_module()
   self.leaf_modules = {}
-  -- composition module
   self.composer = self:new_composer()
   self.composers = {}
-  -- output module
   self.output_module = self:new_output_module()
   self.output_modules = {}
-
-  
 end
 
 function BinTree:evaluate()
@@ -44,7 +38,6 @@ function BinTree:allocate_module(tree, module)
     self[modules][num_free] = nil
   end
 
-  -- necessary for dropout to behave properly
   if self.train then tree[module]:training() else tree[module]:evaluate() end
 end
 
@@ -73,9 +66,7 @@ function BinTree:new_leaf_module()
 end
 
 function BinTree:new_composer()
-  
-  --local composer = LSTM.create(self.mem_dim, self.gate_output)
-  local composer = GRU4.create(self.mem_dim)
+   local composer = GRU4.create(self.mem_dim)
 
   if self.composer ~= nil then
     share_params(composer, self.composer)
@@ -92,7 +83,7 @@ function BinTree:new_output_module()
   return output_module
 end
 
-function BinTree:forward(no)--(tree, inputs)
+function BinTree:forward(no)
   local lloss, rloss = 0, 0
   if #no.children == 0 then
     self:allocate_module(no, 'leaf_module')
@@ -101,9 +92,8 @@ function BinTree:forward(no)--(tree, inputs)
   else
     self:allocate_module(no, 'composer')
 
-    -- get child hidden states
-    local lvecs, lloss = self:forward(no.children[1]) --, inputs)
-    local rvecs, rloss = self:forward(no.children[2]) --, inputs)
+    local lvecs, lloss = self:forward(no.children[1])
+    local rvecs, rloss = self:forward(no.children[2])
     local lc, lh = self:unpack_state(lvecs)
     local rc, rh = self:unpack_state(rvecs)
 
@@ -146,7 +136,6 @@ function BinTree:_backward(no, grad, grad_inputs)
     local composer_grad = no.composer:backward( {lc, lh, rc, rh}, {grad[1], grad[2] + output_grad})
     self:free_module(no, 'composer')
 
-    -- backward propagate to children
     self:_backward(no.children[1], {composer_grad[1], composer_grad[2]}, grad_inputs)
     self:_backward(no.children[2], {composer_grad[3], composer_grad[4]}, grad_inputs)
   end
@@ -169,10 +158,6 @@ function BinTree:parameters()
   end
   return params, grad_params
 end
-
---
--- helper functions
---
 
 function BinTree:unpack_state(state)
   local c, h

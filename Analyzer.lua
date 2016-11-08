@@ -41,6 +41,9 @@ function loadsets()
 		if set[i] == "2" then testset[b] = i; b = b + 1 end
 		if set[i] == "3" then devset[c] = i; c = c + 1 end
 	end
+	print(#trainset)
+	print(#testset)
+	print(#devset)
 end
 
 function load(number)
@@ -107,7 +110,6 @@ function score(set, mod)
 end
 
 include('Trainer.lua')
-include('bTree.lua')
 include('BinTree.lua')
 GRU4 = require 'GRU4'
 LSTM = require 'LSTM'
@@ -116,8 +118,9 @@ statistics = require 'Stat'
 classnumber = 5
 require 'Serv'
 
-dload()
---zload(1000000)
+--dload()
+zload(1000000)
+
 
 local model = Trainer({}, 0.05)
 local best = -1.0

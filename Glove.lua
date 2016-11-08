@@ -28,6 +28,8 @@ function Glove.loadDictionary(path, verbose)
 	return dico
 end
 
+--totalw = 0 -- total nbr of words
+
 function Glove.lookup(path)
 	local file = io.open(path, "r")
 	print( "< loading vector representation        >")
@@ -46,6 +48,8 @@ function Glove.lookup(path)
 				w[j] = tonumber(tab[j+1])
 			end
 			dico[tab[1]] = w
+			--totalw = totalw + 1 -- total nbr of words
+			--print(totalw)
 		end
 	end
 	io.close(file)
