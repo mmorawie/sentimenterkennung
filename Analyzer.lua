@@ -111,15 +111,14 @@ end
 
 include('Trainer.lua')
 include('BinTree.lua')
-GRU4 = require 'GRU4'
-LSTM = require 'LSTM'
+GRU4 = require 'GRU'
 statistics = require 'Stat'
 
 classnumber = 5
 require 'Serv'
 
 --dload()
-zload(1000000)
+zload(6000000)
 
 
 local model = Trainer({}, 0.05)

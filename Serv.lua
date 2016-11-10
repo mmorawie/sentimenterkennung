@@ -29,6 +29,7 @@ function v(word) -- vector representation
 	local vec = dictionary[word:lower()]
 	if word == nullwrd then return nullVector(vectorSize) end
 	if vec == nil then
+        --print("! -- " .. word)
 		--vec = Glove.searchmore(word:lower())
         vec = nullVector(vectorSize)
 	end
