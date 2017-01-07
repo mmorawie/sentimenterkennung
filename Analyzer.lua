@@ -12,21 +12,6 @@ Node = require 'Node'
 
 local Analyzer = {}
 
-function share_params(cell, src)
-  if torch.type(cell) == 'nn.gModule' then
-    for i = 1, #cell.forwardnodes do
-      local node = cell.forwardnodes[i]
-      if node.data.module then
-        node.data.module:share(src.forwardnodes[i].data.module, 'weight', 'bias', 'gradWeight', 'gradBias')
-      end
-    end
-  elseif torch.isTypeOf(cell, 'nn.Module') then
-    cell:share(src, 'weight', 'bias', 'gradWeight', 'gradBias')
-  else
-    error('parameters cannot be shared for this input')
-  end
-end
-
 function loadsets()
 	set 		= SST.loadSplit()
 	results 	= SST.loadResults()
@@ -41,9 +26,6 @@ function loadsets()
 		if set[i] == "2" then testset[b] = i; b = b + 1 end
 		if set[i] == "3" then devset[c] = i; c = c + 1 end
 	end
-	print(#trainset)
-	print(#testset)
-	print(#devset)
 end
 
 function load(number)
@@ -110,15 +92,24 @@ function score(set, mod)
 end
 
 include('Trainer.lua')
-include('BinTree.lua')
+include('bTree.lua')
+include('Model.lua')
 GRU4 = require 'GRU'
 statistics = require 'Stat'
 
 classnumber = 5
-require 'Serv'
+require 'Service'
+
+
 
 --dload()
-zload(6000000)
+zload(1000000)
+
+
+--local nodee = Node.setup(sentences[testset[2]]:split('|'), trees[testset[2]])
+Parser = require 'Parser'
+--Parser.drawTree(nodee)
+
 
 
 local model = Trainer({}, 0.05)
@@ -139,6 +130,7 @@ end
 print('finished training')
 
 
+
 statistics:zero()
 for i = 1, #testset do
 	model.bTree:evaluate()
@@ -152,7 +144,7 @@ for i = 1, #testset do
 end
 statistics:printout()
 
-torch.save('./networks/' .. 'module4', model.bTree) 
+--torch.save('./networks/' .. 'module4', model.bTree) 
 
 
 --wordtrainer("main1b",0.05, true)
@@ -172,4 +164,4 @@ torch.save('./networks/' .. 'module4', model.bTree)
 --sent("It is difficult for the isolated individual to work himself out of the immaturity which has become almost natural for him.", "main1", "main2")
 --sent("This is so boring.", "main1", "main2")
 
-return Analyzer
+return Analyzer 

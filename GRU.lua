@@ -15,6 +15,8 @@ function GRU.create(input_size)
 	
 	local one = nn.CMulTable()({rgate, input1})
 	local two = nn.CMulTable()({rgate, input2})
+	--local one = input1
+	--local two = input2
 	local hidden_candidate = nn.Tanh()( nn.CAddTable()({ nn.Linear(m, m)(one), nn.Linear(m, m)(two) }) )
 
 	local zgate = nn.CAddTable()({ nn.Linear(m, m)(z1gate), nn.Linear(m, m)(z2gate) })

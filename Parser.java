@@ -27,9 +27,7 @@ public class Parser {
 
     private List<CoreLabel> tokenize(String str) {
         Tokenizer<CoreLabel> tokenizer = tokenizerFactory.getTokenizer(new StringReader(str));
-		//Tokenizer<CoreLabel> tokenizer = PTBTokenizer.factory(new CoreLabelTokenFactory(), "invertible=true").getTokenizer(new StringReader(str));
-        return tokenizer.tokenize();
-		//return null;
+		return tokenizer.tokenize();
     }
 	
 	public static void main(String argv[]) {
@@ -42,7 +40,6 @@ public class Parser {
 		TreeBinarizer bin = TreeBinarizer.simpleTreeBinarizer(
 			new SemanticHeadFinder(),
 			new PennTreebankLanguagePack());
-		//System.out.println(tree);
 		tree = bin.transformTree(tree);
 
 		leaves = tree.getLeaves();
@@ -51,10 +48,8 @@ public class Parser {
 			sentence = sentence + "|" + leaves.get(i).label().value();
 
 		for (Tree leaf : leaves) {
-            //System.out.print(leaf.label().value() + "|");
-			leaf.parent(tree).setChildren(new Tree[0]);
+            leaf.parent(tree).setChildren(new Tree[0]);
 		}
-		//System.out.println(tree);
 		leaves = tree.getLeaves();
 		int[] parent = new int[tree.size()];
 		int size = tree.size();
@@ -67,11 +62,9 @@ public class Parser {
 			root = root.parent(tree);
 		}
 		dfs(root, size-1, parent);
-		//System.out.println(tree);
 		leaves = tree.getLeaves();
 		int j = 0;
 		for (Tree leaf : leaves) {
-			//System.out.println (leaf.label().value() + " --- " + leaf.parent(tree).label().value());
 			parent[j] = Integer.parseInt(leaf.parent(tree).label().value());
 			j = j+1;
 		}
@@ -92,13 +85,10 @@ public class Parser {
 			new PennTreebankLanguagePack());
 		tree = bin.transformTree(tree);
 		leaves = tree.getLeaves();
-		//System.out.println("--------------------" + tree.getChild(0));
 		Node root = DFScopy(tree);
-		//DFSprint(root, 1);
 		index = 0; 
 		DFSnumber(root); 
 		DFSpostorder(root);
-		//DFSprint(root, 1);
 		int[] arr = new int[index]; 
 		DFSparent(root, arr);
 
@@ -108,27 +98,6 @@ public class Parser {
 
 		String sentence = leaves.get(0).label().value();
 		for (int i = 1; i<leaves.size(); i++) sentence = sentence + "|" + leaves.get(i).label().value();
-
-		/*for (Tree leaf : leaves) leaf.parent(tree).setChildren(new Tree[0]);
-		leaves = tree.getLeaves();
-		int[] parent = new int[tree.size()];
-		int size = tree.size();
-		Tree root = leaves.get(0);
-
-		while(true){
-			if( root.label().value().equals("ROOT") ) break;
-			root = root.parent(tree);
-		}
-		dfs(root, size-1, parent);
-		leaves = tree.getLeaves();
-		int j = 0;
-		for (Tree leaf : leaves) {
-			parent[j] = Integer.parseInt(leaf.parent(tree).label().value());
-			j = j+1;
-		}
-		String ppr = parent[0] + "";
-		for (int i = 1; i<parent.length; i++) ppr = ppr + "|" + parent[i];*/
-
 		
         return (ppr + "@@"  + sentence);
 	}

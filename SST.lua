@@ -11,7 +11,7 @@ end
 
 
 function SST.loadResults()
-	local file = io.open("./sst/sentiment_labels.txt","r")
+	local file = io.open( './sst/sentiment_labels.txt',"r")
 	io.input(file)
 	local results = {};
 	local i = 1;

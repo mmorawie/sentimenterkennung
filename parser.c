@@ -76,6 +76,39 @@ char* parse(char* buf){
 	return ret;
 }
 
+void init(int n){
+	if(env1 == NULL) return;
+	jclass graph_class = (*env1)->FindClass(env1, "Graph");
+    jmethodID init_method = (*env1)->GetStaticMethodID(env1, graph_class, "init", "(I)V");
+	(*env1)->CallStaticObjectMethod(env1, graph_class, init_method, n);
+	return;
+}
+
+void setLeaf(char *str, int sent, int i){
+	if(env1 == NULL) return;
+	jclass graph_class = (*env1)->FindClass(env1, "Graph");
+    jmethodID method = (*env1)->GetStaticMethodID(env1, graph_class, "setLeaf", "(Ljava/lang/String;II)V");
+	jstring jstrBuf = (*env1)->NewStringUTF(env1, str);
+	(*env1)->CallStaticObjectMethod(env1, graph_class, method, jstrBuf, sent, i-1);
+	return;
+}
+
+void setNode(char *str, int sent, int i, int j, int k){
+	if(env1 == NULL) return;
+	jclass graph_class = (*env1)->FindClass(env1, "Graph");
+    jmethodID method = (*env1)->GetStaticMethodID(env1, graph_class, "setNode", "(Ljava/lang/String;IIII)V");
+	jstring jstrBuf = (*env1)->NewStringUTF(env1, str);
+	(*env1)->CallStaticObjectMethod(env1, graph_class, method, jstrBuf, sent, i-1, j-1, k-1);
+	return;
+}
+
+void display(){
+	jclass graph_class = (*env1)->FindClass(env1, "Graph");
+    jmethodID method = (*env1)->GetStaticMethodID(env1, graph_class, "display", "(I)V");
+	(*env1)->CallStaticObjectMethod(env1, graph_class, method, 1);
+}
+
+
 int startJVM(){
     env1 = create_vm(&jvm1);
 	if(env1 == NULL){

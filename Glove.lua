@@ -2,7 +2,6 @@
 local Glove = {}
 
 function Glove.loadDictionary(path, verbose)
-	--"./glove.6B/glove.6B.50d.txt"
 	if verbose then print( "[ loading vector representation        ]") end
 	local file = io.open(path, "r")
 	io.input(file)
@@ -11,7 +10,6 @@ function Glove.loadDictionary(path, verbose)
 	while true do
 		ii = ii + 1
 		if ii%10000 == 0 then jj = jj+1
-			--if verbose then print( "...." .. tostring(jj) .. " \t\t" .. tostring(ii)) end
 			if verbose then io.write("'") end
 		end
 		local line = io.read()
@@ -21,14 +19,12 @@ function Glove.loadDictionary(path, verbose)
 		for j = 1, #tab-1 do
 			w[j] = tonumber(tab[j+1])
 		end
-		dico[tab[1]] = w -- torch.Tensor(w)
+		dico[tab[1]] = w
 	end
 	io.close(file)
 	if verbose then io.write("\n") end
 	return dico
 end
-
---totalw = 0 -- total nbr of words
 
 function Glove.lookup(path)
 	local file = io.open(path, "r")
@@ -48,8 +44,6 @@ function Glove.lookup(path)
 				w[j] = tonumber(tab[j+1])
 			end
 			dico[tab[1]] = w
-			--totalw = totalw + 1 -- total nbr of words
-			--print(totalw)
 		end
 	end
 	io.close(file)

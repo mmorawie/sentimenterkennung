@@ -2,11 +2,6 @@
 
 Node = {
     children = {},
-    --correct = -1,
-    --left = 1000000,
-    --result = 0.5,
-    --size = 0,
-    --name = "",
     addchild = function(self, node)
             self.left = math.min(self.left, node.left)
             position = #self.children + 1
@@ -23,8 +18,9 @@ Node = {
             printout(self, 1)
         end,
     printout = function(self, z)
-            zz = z or 1
+            local zz = z or 1
             for i = 1, zz do io.write("|") end
+    io.write(self.name .. "\n")
             io.write(self.name .. "   " .. tablebucket( self.output ) + 1 .. "\n")
             for i = 1, #self.children do
                     self.children[i]:printout(zz+1)
@@ -57,10 +53,12 @@ Node = {
             local nodes = {}
 	        for j = #words + 1,#tree do 	
                 nodes[j] = Node:new("" .. j) 
+                nodes[j].index = j -- only for parser viz
             end
 	        for j = 1,#words do 
                 nodes[j] = Node:newleaf(j, words[j])
                 nodes[tree[j]]:addchild(nodes[j])
+                nodes[j].index = j -- only for parser viz
             end
 	        for j = #words+1,#tree-1 do 	nodes[tree[j]]:addchild(nodes[j]) end
 	        for j = #words+1, #tree do 		nodes[j].name = nodes[j].children[1].name .. " " .. nodes[j].children[2].name end

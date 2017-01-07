@@ -6,8 +6,15 @@ local ffi = require 'ffi'
 local started = false
 
 ffi.cdef[[
+// parsing
 char* parse(char* buf);
 int test();
+// vizualizartion
+void init(int n);
+void setLeaf(char* str, int sent, int i);
+void setNode(char* str, int sent, int i, int j, int k);
+void display();
+// starting a JVM
 int startJVM();
 ]]
 
@@ -36,6 +43,29 @@ function Parser.parse(str)
 	end
 	zz = parser.parse(buf)
 	return ffi.string(zz)
+end
+
+
+function Parser.drawTree(nodes)
+	if started == false then
+		Parser.start()
+	end
+	if started == false then
+		return "err"
+	end
+	parser.init(#nodes)
+	for i = 1, #nodes do
+		local str = nodes[i].name
+		local buf = ffi.new("char[?]", #str)
+		ffi.copy(buf, str)
+		local sent = 1-- bucket(nodes[i].correct)
+		if #nodes[i].children == 0 then
+			parser.setLeaf(buf, sent, i)
+		else
+			parser.setNode(buf, sent, i, nodes[i].children[1].index, nodes[i].children[2].index)
+		end
+	end
+	parser.display()
 end
 
 return Parser
