@@ -30,52 +30,6 @@ public class Parser {
 		return tokenizer.tokenize();
     }
 	
-	public static void main(String argv[]) {
-        String str = argv[0];
-        Parser parser = new Parser();
-        Tree tree = parser.parse(str);
-
-        List<Tree> leaves = tree.getLeaves();
-
-		TreeBinarizer bin = TreeBinarizer.simpleTreeBinarizer(
-			new SemanticHeadFinder(),
-			new PennTreebankLanguagePack());
-		tree = bin.transformTree(tree);
-
-		leaves = tree.getLeaves();
-		String sentence = leaves.get(0).label().value();
-		for (int i = 1; i<leaves.size(); i++)
-			sentence = sentence + "|" + leaves.get(i).label().value();
-
-		for (Tree leaf : leaves) {
-            leaf.parent(tree).setChildren(new Tree[0]);
-		}
-		leaves = tree.getLeaves();
-		int[] parent = new int[tree.size()];
-		int size = tree.size();
-		Tree root = leaves.get(0);
-
-		while(true){
-			if( root.label().value().equals("ROOT") ) {
-				break;
-			}
-			root = root.parent(tree);
-		}
-		dfs(root, size-1, parent);
-		leaves = tree.getLeaves();
-		int j = 0;
-		for (Tree leaf : leaves) {
-			parent[j] = Integer.parseInt(leaf.parent(tree).label().value());
-			j = j+1;
-		}
-		String ppr = parent[0] + "";
-		for (int i = 1; i<parent.length; i++){
-			ppr = ppr + "|" + parent[i];
-		}
-
-        System.out.println("\n"+ ppr + "@@"  + sentence);
-    }
-
 	public static String process(String str){
 		Parser parser = new Parser();
         Tree tree = parser.parse(str);
@@ -169,7 +123,6 @@ public class Parser {
 		Tree[] arr = t.children();
 		int i = n;
 		for (Tree child : arr) {
-			//if(child.children().length == 1) child.setChildren(child.children()[0].children());
 			if(child.children().length>0){
 				i = i-1;
 				dfs(child, i, parent);

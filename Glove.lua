@@ -1,9 +1,13 @@
 
-local Glove = {}
+local Glove = {
+	dir1 = "./glove.42B.300d",
+	dir2 = "./glove.6B"
+}
 
-function Glove.loadDictionary(path, verbose)
-	if verbose then print( "[ loading vector representation        ]") end
-	local file = io.open(path, "r")
+function Glove.loadDictionary(path, verbose, number)
+	local number = number or 9000000
+	if verbose then print( '[ loading vector representation        ]') end
+	local file = io.open(path, 'r')
 	io.input(file)
 	local dico = {}
 	local ii = 0; local jj = 0
@@ -14,19 +18,18 @@ function Glove.loadDictionary(path, verbose)
 		end
 		local line = io.read()
 		if line == nil then break end
-		local tab = line:split(" ")
+		if ii >= number then break end
+		local tab = line:split(' ')
 		local w = {}
-		for j = 1, #tab-1 do
-			w[j] = tonumber(tab[j+1])
-		end
+		for j = 1, #tab-1 do w[j] = tonumber(tab[j+1]) end
 		dico[tab[1]] = w
 	end
 	io.close(file)
 	if verbose then io.write("\n") end
-	return dico
+	return dico, ii
 end
 
-function Glove.lookup(path)
+function Glove.lookup(path, dictionary)
 	local file = io.open(path, "r")
 	print( "< loading vector representation        >")
 	io.input(file)
@@ -48,7 +51,7 @@ function Glove.lookup(path)
 	end
 	io.close(file)
 	io.write("\n")
-	return dico
+	return dico, ii
 end
 
 return Glove

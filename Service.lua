@@ -1,22 +1,7 @@
 
+--nullwrd = "[-]"
 
-nullwrd = "[-]"
-
-
-function share_params(cell, src)
-  if torch.type(cell) == 'nn.gModule' then
-    for i = 1, #cell.forwardnodes do
-      local node = cell.forwardnodes[i]
-      if node.data.module then
-        node.data.module:share(src.forwardnodes[i].data.module, 'weight', 'bias', 'gradWeight', 'gradBias')
-      end
-    end
-  elseif torch.isTypeOf(cell, 'nn.Module') then
-    cell:share(src, 'weight', 'bias', 'gradWeight', 'gradBias')
-  else
-    error('parameters cannot be shared for this input')
-  end
-end
+-- global functions --
 
 function string:split(sep)
         local sep, fields = sep or ":", {}
@@ -33,6 +18,15 @@ function map(func, array)
   return new_array
 end
 
+local Service = {}
+
+function string:split(sep)
+        local sep, fields = sep or ":", {}
+        local pattern = string.format("([^%s]+)", sep)
+        self:gsub(pattern, function(c) fields[#fields+1] = c end)
+        return fields
+end
+
 function nullVector(nbr)
 	local w = {}
 	for j = 1, nbr do
@@ -42,16 +36,16 @@ function nullVector(nbr)
 end
 
 function v(word) -- vector representation
-	local vec = dictionary[word:lower()]
-	if word == nullwrd then return nullVector(vectorSize) end
+	local vec = Service.parent.dictionary[word:lower()]
 	if vec == nil then
-		--vec = Glove.searchmore(word:lower())
-        --vec = nullVector(vectorSize)
         vec = {}
-        for i = 1,vectorSize do
+        for i = 1, Service.parent.vector_size do
             vec[i] = -1 + math.random()*2
         end
-        dictionary[word:lower()] = vec
+        if Service.parent.dict_max_size == nil or parent.dict_max_size > Service.parent.dict_size then 
+            Service.parent.dictionary[word:lower()] = vec 
+            Service.parent.dict_size = Service.parent.dict_size + 1
+        end
 	end
 	return vec
 end  
@@ -64,26 +58,10 @@ function u(list) -- tensor representation
 	return torch.Tensor({list})
 end
 
-if classnumber == 5 then
-    bucket = function (x)
-        if x<0.2 then return 0 end
-        if x<0.4 then return 1 end
-        if x<0.6 then return 2 end
-        if x<0.8 then return 3 end
-	    return 4;
-    end
-else
-    bucket = function (x)
-        if x<0.4 then return 1 end
-        if x<0.6 then return 0 end
-	    return 2;
-    end
-end
-
 function tablebucket(x)
     x = x[1]
     local max = 1;
-    for i = 1, classnumber do if x[i] > x[max] then max = i end end
+    for i = 1, x:size()[1] do if x[i] > x[max] then max = i end end
     return max;
 end
 
@@ -121,3 +99,5 @@ function print_r ( t )
     print()
 end
 
+
+return Service

@@ -20,7 +20,6 @@ Node = {
     printout = function(self, z)
             local zz = z or 1
             for i = 1, zz do io.write("|") end
-    io.write(self.name .. "\n")
             io.write(self.name .. "   " .. tablebucket( self.output ) + 1 .. "\n")
             for i = 1, #self.children do
                     self.children[i]:printout(zz+1)
@@ -49,7 +48,7 @@ Node = {
             o.correct = -1;
             return o
         end,
-    setup = function(words, tree)
+    setup = function(words, tree, sst)
             local nodes = {}
 	        for j = #words + 1,#tree do 	
                 nodes[j] = Node:new("" .. j) 
@@ -64,13 +63,30 @@ Node = {
 	        for j = #words+1, #tree do 		nodes[j].name = nodes[j].children[1].name .. " " .. nodes[j].children[2].name end
             for j = 1, #tree do 		
                 nodes[j].output = -1	
-                nodes[j].correct = results[ phrases[ nodes[j].name ]  ]
+                nodes[j].correct = sst.results[ sst.phrases[ nodes[j].name ]  ]
             end
             nodes.wsize = #words
             nodes.tsize = #tree
             return nodes
+        end,
+    setup_2 = function(words, tree)
+            local nodes = {}
+	        for j = #words + 1,#tree do 	
+                nodes[j] = Node:new("" .. j) 
+                nodes[j].index = j -- only for parser viz
+            end
+	        for j = 1,#words do 
+                nodes[j] = Node:newleaf(j, words[j])
+                nodes[tree[j]]:addchild(nodes[j])
+                nodes[j].index = j -- only for parser viz
+            end
+	        for j = #words+1,#tree-1 do 	nodes[tree[j]]:addchild(nodes[j]) end
+	        for j = #words+1, #tree do 		nodes[j].name = nodes[j].children[1].name .. " " .. nodes[j].children[2].name end
+            for j = 1, #tree do nodes[j].output = -1; nodes[j].correct = 0 end
+            nodes.wsize = #words
+            nodes.tsize = #tree
+            return nodes
         end
-    
 }
 
 

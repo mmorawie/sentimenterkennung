@@ -4,6 +4,7 @@ Stat = {
     box = 2,
     maxlen = 80,
     limit = 80/2,
+    bucket = nil,
     zeroc = function(self)
         self.cnt = 0
         self.tot = 0
@@ -19,11 +20,6 @@ Stat = {
         self.nsentences = 0
         self.ntotal = 0
 
-        self.wordserror = 0
-        self.phraseserror = 0
-        self.sentenceserror = 0
-        self.totalerror = 0
-
         self.lenghts = {}
         self.lenghtscorrect = {}
         for i = 1, 100 do 
@@ -32,14 +28,14 @@ Stat = {
         end
     end,
     words = function(self, out, rea)
-        if tablebucket(out) == bucket(rea) then 
+        if tablebucket(out) == self.bucket(rea) then 
             self.wordscorrect = self.wordscorrect + 1
             self.totalcorrect = self.totalcorrect + 1
         end
         self.nwords = self.nwords + 1
     end,
     sentences = function(self, out, rea)
-        if tablebucket(out) == bucket(rea) then 
+        if tablebucket(out) == self.bucket(rea) then 
             self.sentencescorrect = self.sentencescorrect + 1
             self.phrasescorrect = self.phrasescorrect + 1
         end
@@ -47,14 +43,14 @@ Stat = {
         self.nphrases = self.nphrases + 1
     end,
     phrases = function(self, out, rea, size)
-        if tablebucket(out) == bucket(rea) then 
+        if tablebucket(out) == self.bucket(rea) then 
             self.phrasescorrect = self.phrasescorrect + 1 
         end
         self.nphrases = self.nphrases + 1
         for i = 1,self.limit do
             if (i-1)*self.box < size and i*self.box >= size then
                 self.lenghts[i] = self.lenghts[i] + 1
-                if tablebucket(out) == bucket(rea) then self.lenghtscorrect[i] = self.lenghtscorrect[i] + 1 end
+                if tablebucket(out) == self.bucket(rea) then self.lenghtscorrect[i] = self.lenghtscorrect[i] + 1 end
                 break
             end
         end
@@ -67,7 +63,7 @@ Stat = {
         result = {}
         result.sentences = self.sentencescorrect/self.nsentences
         result.phrases = self.phrasescorrect/self.nphrases
-        result.word = self.wordscorrect/self.nwords
+        result.wordss = self.wordscorrect/self.nwords
         len = {}
         for i = 1, self.limit do
             if self.lenghts[i] == 0 then break end

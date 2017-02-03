@@ -1,6 +1,9 @@
 
 .*
 !/.gitignore
+!/CMakeLists.txt
+
+networks/
 
 # Compiled source 
 *.com

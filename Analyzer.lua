@@ -103,8 +103,8 @@ require 'Service'
 
 
 --dload()
-zload(1000000)
-
+--zload(1000000)
+load()
 
 --local nodee = Node.setup(sentences[testset[2]]:split('|'), trees[testset[2]])
 Parser = require 'Parser'
